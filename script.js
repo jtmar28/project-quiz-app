@@ -18,7 +18,11 @@ var quizController = (function(){
             localStorage.removeItem('questionCollection');
         }
     }
+    if(questionLocalStorage.getQuestionCollection() === null){
+        questionLocalStorage.setQuestionCollection([]);
+    }
     return {
+        getQuestionLocalStorage: questionLocalStorage,
         addQuestionOnLocalStorage: function(newQuestionText, options){
             var optionsArr, corrAns, questionId, newQuestion, getStoredQuestions, isChecked;
             if(questionLocalStorage.getQuestionCollection() === null){
@@ -53,14 +57,18 @@ var quizController = (function(){
                             options[x].value = "";
                             options[x].previousElementSibling.checked = false;
                         }
+                        return true;
                     }else{
                         alert('You missed to check correct answer, or you checked answer without value');
+                        return false;
                     }
                 }else{
                     alert('You must insert at least 2 options');
+                    return false;
                 }
             }else{
                 alert('Please insert Question');
+                return false;
             }
         }
     }
@@ -71,8 +79,11 @@ var UIController =(function(){
         //Admin Panel Elements
         questionInsertBtn: document.getElementById('question-insert-btn'),
         newQuestionText: document.getElementById('new-question-text'),
-        adminOptions: document.querySelectorAll('admin-option'),
-        adminOptionsContainer: document.querySelector('admin-options-container')
+        adminOptions: document.querySelectorAll('.admin-option'),
+        adminOptionsContainer: document.querySelector('.admin-options-container'),
+        insertedQuestionsWrapper: document.querySelector('.inserted-questions-wrapper'),
+        questionUpdateBtn: document.getElementById('question-update-btn'),
+        questionDeleteBtn: document.getElementById('question-delete-btn')
     };
     return {
         getDomItems: domItems,
@@ -86,6 +97,43 @@ var UIController =(function(){
                 domItems.adminOptionsContainer.lastElementChild.lastElementChild.addEventListener('focus', addInput);
             }   
             domItems.adminOptionsContainer.lastElementChild.lastElementChild.addEventListener('focus', addInput);
+        },
+        createQuestionList: function(getQuestions){
+            var questHTML, numberingArr;
+            domItems.insertedQuestionsWrapper.innerHTML = "";
+            numberingArr = [];
+            for(var i = 0; i < getQuestions.getQuestionCollection().length; i++){
+                numberingArr.push(i + 1);
+                questHTML = `<p><span>${numberingArr[i]}. ${getQuestions.getQuestionCollection[i].questionText}</span><button id="question-${getQuestions.getQuestionCollection[i].id}">Edit</button></p>`;
+                domItems.insertedQuestionsWrapper.insertAdjacentHTML('afterbegin', questHTML);
+            }
+        },
+        editQuestList: function(event,storageQuestionList, addInputsDynamically){
+            var getid, getStorageQuestionList, foundItem, placeInArr, optionHTML;
+            if('question-'.indexOf(event.target.id)){
+                getid = parseInt(event.target.id.split('-')[1]);
+                getStorageQuestionList = storageQuestionList.getQuestionCollection;
+                for(var i = 0; i < getStorageQuestionList.length; i++){
+                    if(getStorageQuestionList[i].id === getid){
+                        foundItem = getStorageQuestionList[i];
+                        placeInArr = i;
+                    }
+                }
+                domItems.newQuestionText.value = foundItem.questionText;
+                domItems.adminOptionsContainer.innerHTML = '';
+                optionHTML = '';
+                for(var x = 0; x < foundItem.options.length; x++){
+                    optionHTML += `<div class="admin-option-wrapper">
+                    <input type="radio" class="admin-option-${x}" name="answer" value="${x}">
+                    <input type="text" class="admin-option admin-option-${x}" value="${foundItem.options[x]}">
+                </div>`;
+                }
+                domItems.adminOptionsContainer.innerHTML = optionHTML;
+                domItems.questionUpdateBtn.style.visibility = 'visible';
+                domItems.questionDeleteBtn.style.visibility = 'visible';
+                domItems.questionInsertBtn.style.visibility = 'hidden';
+                addInputsDynamically();
+            }
         }
     }
 })();
@@ -93,8 +141,15 @@ var UIController =(function(){
 var controller = (function(quizCtrl, UICtrl){
     var selectedDomItems = UIController.getDomItems;
     UIController.addInputsDynamically();
+    UIController.createQuestionList(quizCtrl.getQuestionLocalStorage);
     selectedDomItems.questionInsertBtn.addEventListener('click', function(){
         var adminOptions = document.querySelectorAll('.admin-option');
-        quizController.addQuestionOnLocalStorage(selectedDomItems.newQuestionText, adminOptions);
+        var checkBoolean = quizController.addQuestionOnLocalStorage(selectedDomItems.newQuestionText, adminOptions);
+        if(checkBoolean){
+            UIController.createQuestionList(quizCtrl.getQuestionLocalStorage);
+        }
+    });
+    selectedDomItems.insertedQuestionsWrapper.addEventListener('click', function(e){
+        UICtrl.editQuestList(e,quizController.getQuestionLocalStorage, addInputsDynamically);
     });
 })(quizController,UIController);
