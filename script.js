@@ -83,7 +83,8 @@ var UIController =(function(){
         adminOptionsContainer: document.querySelector('.admin-options-container'),
         insertedQuestionsWrapper: document.querySelector('.inserted-questions-wrapper'),
         questionUpdateBtn: document.getElementById('question-update-btn'),
-        questionDeleteBtn: document.getElementById('question-delete-btn')
+        questionDeleteBtn: document.getElementById('question-delete-btn'),
+        questsClearBtn: document.getElementById('questions-clear-btn')
     };
     return {
         getDomItems: domItems,
@@ -108,7 +109,7 @@ var UIController =(function(){
                 domItems.insertedQuestionsWrapper.insertAdjacentHTML('afterbegin', questHTML);
             }
         },
-        editQuestList: function(event,storageQuestionList, addInputsDynamically){
+        editQuestList: function(event,storageQuestionList, addInputsDynamically,updateQuestionListFn){
             var getid, getStorageQuestionList, foundItem, placeInArr, optionHTML;
             if('question-'.indexOf(event.target.id)){
                 getid = parseInt(event.target.id.split('-')[1]);
@@ -132,7 +133,64 @@ var UIController =(function(){
                 domItems.questionUpdateBtn.style.visibility = 'visible';
                 domItems.questionDeleteBtn.style.visibility = 'visible';
                 domItems.questionInsertBtn.style.visibility = 'hidden';
+                domItems.questsClearBtn.style.pointerEvents ='none';
                 addInputsDynamically();
+                var backDefaultView = function(){
+                    var updatedOptions;
+                    domItems.newQuestionText.value = '';
+                    updatedOptions= document.querySelectorAll('.admin-option');
+                    for(var i = 0; i < updatedOptions.length; i++){
+                        updatedOptions[i].value = '';
+                        updatedOptions[i].previousElementSibling.checked = false;
+                    }
+                    domItems.questionUpdateBtn.style.visibility = 'hidden';
+                        domItems.questionDeleteBtn.style.visibility = 'hidden';
+                        domItems.questionInsertBtn.style.visibility = 'visible';
+                        domItems.questsClearBtn.style.pointerEvents ='';
+                        updateQuestionListFn(storageQuestionList);
+                }
+                var updateQuestion = function(){
+                    var newOptions,optionEls;
+                    newOptions = [];
+                    optionEls = document.querySelectorAll('.admin-option');
+                    foundItem.questionText = domItems.newQuestionText.value;
+                    foundItem.correctAnswer = '';
+                    for(var i =0; i < optionEls.length;i++){
+                        if(optionEls[i].value !== ''){
+                            newOptions.push(optionEls[i].value);
+                            if(optionEls[i].previousElementSibling.checked){
+                                foundItem.correctAnswer = optionEls[i].value;
+                            }
+
+                        }
+                    }
+                    foundItem.options = newOptions;
+                    if(foundItem.questionText !== ''){
+                        if(foundItem.options.length > 1){
+                            if(foundItem.correctAnswer !== ''){
+                                getStorageQuestionList.splice(placeInArr, 1, foundItem);
+                                storageQuestionList.setQuestionCollection(getStorageQuestionList);
+                                backDefaultView();
+                            }else{
+                                alert('You missed to check correct answer, or you checked answer without value');
+                            }
+                            
+                        }else{
+                            alert('You must insert at least two options');
+                        }
+                    }else{
+                        alert('Please insert Question');
+                    }
+                    
+                }
+                domItems.questionUpdateBtn.onclick = updateQuestion;
+                var deleteQuestion = function(){
+                    getStorageQuestionList.splice(placeInArr,1);
+                    storageQuestionList.setQuestionCollection(getStorageQuestionList);
+                    backDefaultView();
+                }
+
+                domItems.questionDeleteBtn.onclick = deleteQuestion;
             }
         }
     }
@@ -150,6 +208,6 @@ var controller = (function(quizCtrl, UICtrl){
         }
     });
     selectedDomItems.insertedQuestionsWrapper.addEventListener('click', function(e){
-        UICtrl.editQuestList(e,quizController.getQuestionLocalStorage, addInputsDynamically);
+        UICtrl.editQuestList(e,quizController.getQuestionLocalStorage, addInputsDynamically, UICtrl.createQuestionList);
     });
 })(quizController,UIController);
